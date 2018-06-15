@@ -230,7 +230,7 @@ class SchedulerAPI(ExposedAPI):
         """
         try:
             # YAML can parse JSON as YAML, JSON cannot parse YAML at all
-            yaml_data = yaml.load(yaml_string)
+            yaml_data = yaml.safe_load(yaml_string)
         except yaml.YAMLError as exc:
             raise xmlrpclib.Fault(400, "Decoding job submission failed: %s." % exc)
         try:
@@ -1105,7 +1105,7 @@ class SchedulerAPI(ExposedAPI):
         job_ctx = None
         if context is not None:
             try:
-                job_ctx = yaml.load(context)
+                job_ctx = yaml.safe_load(context)
             except yaml.YAMLError as exc:
                 raise xmlrpclib.Fault(
                     400,
@@ -1118,7 +1118,7 @@ class SchedulerAPI(ExposedAPI):
         config = device.load_configuration(job_ctx=job_ctx, output_format="yaml")
 
         # validate against the device schema
-        validate_device(yaml.load(config))
+        validate_device(yaml.safe_load(config))
 
         return xmlrpclib.Binary(config.encode('UTF-8'))
 
@@ -1266,7 +1266,7 @@ class SchedulerAPI(ExposedAPI):
                 continue
             try:
                 # validate against the device schema
-                validate_device(yaml.load(config))
+                validate_device(yaml.safe_load(config))
             except SubmissionException as exc:
                 results[key] = {'Invalid': exc}
                 continue

@@ -128,6 +128,7 @@ class LavaSystemAPI(SystemAPI):
         """
         return 2
 
+
     def user_can_view_jobs(self, job_list, username=None):
         """
         Name

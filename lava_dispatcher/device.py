@@ -107,7 +107,7 @@ class NewDevice(PipelineDevice):
                     data = f_in.read()
             else:
                 data = target.read()
-            data = yaml.load(data)
+            data = yaml.safe_load(data)
             if data is None:
                 raise ConfigurationError("Missing device configuration")
             self.update(data)
