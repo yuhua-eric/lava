@@ -1,0 +1,71 @@
+# Simple example of how to use an inline test definition, using qemu
+device_type: qemu
+job_name: Inline Test Definition example
+
+# Reasonable defaults for a simple job
+timeouts:
+  job:
+    minutes: 15
+  action:
+    minutes: 5
+  connection:
+    minutes: 2
+priority: medium
+visibility: public
+
+# context allows specific values to be overridden or included
+context:
+  # tell the qemu template which architecture is being tested
+  # the template uses that to ensure that qemu-system-x86_64 is executed.
+  arch: amd64
+
+metadata:
+  # please change these fields when modifying this job for your own tests.
+  docs-source: writing-tests
+  docs-filename: inline-test-definition-example.yaml
+
+actions:
+- deploy:
+    timeout:
+      minutes: 5
+    to: tmpfs
+    images:
+      rootfs:
+        image_arg: -drive format=raw,file={rootfs}
+          url: http://files.lavasoftware.org/components/lava/standard/debian/stretch/amd64/2/stretch.img.gz
+          sha256sum: b5cdb3b9e65fec2d3654a05dcdf507281f408b624535b33375170d1e852b982c
+        compression: gz
+
+- boot:
+    method: qemu
+    media: tmpfs
+    prompts: ["root@debian:"]
+    auto_login:
+      login_prompt: "login:"
+      username: root
+
+# START-INLINE-TEST-BLOCK
+- test:
+    timeout:
+      minutes: 4
+    definitions:
+    - repository:
+        metadata:
+          format: Lava-Test Test Definition 1.0
+          name: apache-server
+          description: "server installation"
+          os:
+          - debian
+          scope:
+          - functional
+        run:
+          steps:
+          - apt -q update
+          - apt -q -y install apache2
+          - lava-test-case dpkg --shell dpkg -s apache2
+      # remember to use -y to allow apt to proceed without interaction
+      # -q simplifies the apt output for logging.
+      from: inline
+      name: apache-server
+      path: inline/apache-server.yaml
+# END-INLINE-TEST-BLOCK

@@ -1,0 +1,12 @@
+Hi,
+
+The job with id {{ job.id }} has been cancelled by {{ user.username}}
+{{ user.email }}. It took {{ job.start_time|timesince:job.end_time }}.
+
+You can see more details at:
+
+  {{ url_prefix }}{{ job.get_absolute_url }}
+
+-- 
+LAVA
+Linaro Automated Validation

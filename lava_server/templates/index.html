@@ -1,0 +1,151 @@
+{% extends "layouts/content.html" %}
+{% load i18n %}
+{% load utils %}
+
+{% block breadcrumb_container %}
+{% endblock %}
+
+{% block content %}
+
+<h2>Welcome to LAVA</h2>
+
+<p>LAVA is an automated validation architecture primarily aimed at testing deployments of systems based around the
+Linux kernel on ARM devices, specifically ARMv7 and later. The current range of boards (<a
+href="{{ STATIC_URL }}docs/v2/glossary.html#term-device-type"
+>device types</a>) supported by this LAVA instance can be seen
+on the <a href="{% url 'lava.scheduler' %}">scheduler status</a> page which includes details of how many boards
+of each type are available for tests and currently running jobs.</p>
+
+{% if lava.branding_message %}
+<h3>About the LAVA {{ lava.instance_name }} instance</h3>
+    {{ lava.branding_message }}
+{% endif %}
+<h3>LAVA components</h3>
+<ul>
+    <li>
+        <span class="glyphicon glyphicon-signal"></span>
+        <b><a href="{% url 'lava_results' %}">Results</a></b> - viewing results
+        of tests run by you or others.
+    </li>
+    <li>
+        <span class="glyphicon glyphicon-calendar"></span>
+        <b><a href="{% url 'lava.scheduler' %}">Scheduler</a></b> - jobs
+        are scheduled on available devices and the scheduler pages allow
+        you to view current and past jobs as well as submit new jobs.
+    </li>
+    <li>
+        <span class="glyphicon glyphicon-flash"></span>
+        <b><a href="{% url 'lava.api_help' %}">API</a></b> - information on how to interact
+        with LAVA and export data from LAVA using XMLRPC.</li>
+    <li>
+        <span class="glyphicon glyphicon-question-sign"></span>
+        <b><a href="{{ STATIC_URL }}docs/v2">Help</a></b> - documentation
+        on using LAVA, worked examples and use cases, developing your own
+        tests and how to adminster a LAVA instance of your own.</li>
+    {% if user.is_authenticated %}
+    <li>
+        <span class="glyphicon glyphicon-user"></span>
+        <b><a href="{% url 'lava.me' %}">Profile</a></b> - you are logged in as
+    <b>{{ user.get_full_name|default:user.username }}</b>. Your profile
+    provides access to jobs you have submitted or marked as favourites,
+    your bundle streams and your filter or image report subscriptions.
+    </li>
+    {% else %}
+    <li>
+        <span class="glyphicon glyphicon-user"></span>
+        <b><a href="{% url 'login' %}?next={{ request.get_full_path }}">Sign In</a></b> - once you
+    are logged in, LAVA will build a profile for you which provides access
+    to jobs you submit or mark as favourites, your bundle streams containing
+    results of those tests and your filter or image report subscriptions
+    which can alert you to changes in sets of results.</li>
+    {% endif %}
+</ul>
+
+<div class="row">
+  <div class="col-md-6">
+    <h4 class="modal-header">Guides to LAVA</h4>
+    <div class="row">
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+          <li><a href="{{ STATIC_URL }}docs/v2/index.html"
+              class="btn btn-primary">
+              <span class="glyphicon glyphicon-question-sign"></span>
+              Introduction to LAVA</a></li>
+          <li><a
+          href="{{ STATIC_URL }}docs/v2/simple-admin.html"
+              class="btn btn-default">
+              <span class="glyphicon glyphicon-question-sign"></span>
+              Administering a LAVA instance</a></li>
+       </ul>
+      </div>
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+          <li><a href="http://www.lavasoftware.org/"
+              class="btn btn-default">
+              More about LAVA &amp; Linaro</a></li>
+          <li><a
+          href="{{ STATIC_URL }}docs/v2/development-intro.html"
+              class="btn btn-default">
+              <span class="glyphicon glyphicon-question-sign"></span>
+              Developing LAVA</a></li>
+       </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <h4 class="modal-header">Test using LAVA</h4>
+    <div class="row">
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+          <li><a
+          href="{{ STATIC_URL }}docs/v2/first-job.html"
+              class="btn btn-info">
+              <span class="glyphicon glyphicon-question-sign"></span>
+              Use cases and worked examples.</a></li>
+          <li><a
+          href="{{ STATIC_URL}}docs/v2/hacking-session.html"
+              class="btn btn-info">
+              <span class="glyphicon glyphicon-question-sign"></span>
+              Logging into a LAVA device.</a></li>
+       </ul>
+      </div>
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+          <li><a
+          href="{{ STATIC_URL }}docs/v2/writing-tests.html"
+              class="btn btn-success">
+              <span class="glyphicon glyphicon-question-sign"></span>
+              Writing a LAVA test definition.</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if user.is_authenticated %}
+<div class="row">
+  <div class="col-md-6">
+   <h4 class="modal-header">Your submissions</h4>
+    <ul class="nav nav-pills nav-stacked">
+      <li>
+        <a href="{% url 'lava.scheduler.myjobs' %}"><span
+            class="glyphicon glyphicon-tasks pull-right"></span> Your jobs</a>
+      </li>
+      <li>
+        <a href="{% url 'lava.scheduler.favorite_jobs' %}"><span
+            class="glyphicon glyphicon-phone pull-right"></span> Your favourite jobs</a>
+      </li>
+    </ul>
+  </div>
+  <div class="col-md-6">
+   <h4 class="modal-header">Your results</h4>
+    <ul class="nav nav-pills nav-stacked">
+      <li>
+        <a href="{% url 'lava_results' %}"><span
+            class="glyphicon glyphicon-signal pull-right"></span> Your results</a>
+      </li>
+     </ul>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

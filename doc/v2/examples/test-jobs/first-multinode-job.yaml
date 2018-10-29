@@ -1,0 +1,95 @@
+# Simplest multinode test job
+# Same job on two devices without synchronisation
+job_name: First Multinode Job
+
+timeouts:
+  job:
+    minutes: 10
+  action:
+    minutes: 2
+  connection:
+    minutes: 4
+  actions:
+    multinode-test:
+      minutes: 5
+    lava-test-shell:
+      minutes: 2
+
+visibility: public
+priority: medium
+
+metadata:
+  # please change these fields when modifying this job for your own tests.
+  docs-source: writing-multinode
+  docs-filename: first-multinode-job.yaml
+
+# Very simple multinode definition for our example
+# START-PROTOCOLS-BLOCK
+protocols:
+  lava-multinode:
+    roles:
+      foo:
+        device_type: qemu
+        context:
+          arch: amd64
+        count: 1
+      bar:
+        device_type: qemu
+        context:
+          arch: amd64
+        count: 1
+    timeout:
+      minutes: 6
+# END-PROTOCOLS-BLOCK
+
+# START-DEPLOY-BLOCK
+actions:
+- deploy:
+    role:
+    - foo
+    - bar
+    timeout:
+      minutes: 5
+    to: tmpfs
+    images:
+        rootfs:
+          image_arg: -drive format=raw,file={rootfs}
+          url: http://files.lavasoftware.org/components/lava/standard/debian/stretch/amd64/2/stretch.img.gz
+          sha256sum: b5cdb3b9e65fec2d3654a05dcdf507281f408b624535b33375170d1e852b982c
+          compression: gz
+    root_partition: 1
+# END-DEPLOY-BLOCK
+
+# START-BOOT-BLOCK
+- boot:
+    timeout:
+      minutes: 1
+    role:
+    - foo
+    - bar
+    method: qemu
+    media: tmpfs
+    auto_login:
+      login_prompt: "debian login:"
+      username: root
+    prompts:
+    - "root@debian:"
+# END-BOOT-BLOCK
+
+# START-TEST-BLOCK
+- test:
+    role:
+    - foo
+    - bar
+    timeout:
+      minutes: 10
+    definitions:
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/multi-node/multinode01.yaml
+      name: multinode-basic
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: smoke-tests
+# END-TEST-BLOCK

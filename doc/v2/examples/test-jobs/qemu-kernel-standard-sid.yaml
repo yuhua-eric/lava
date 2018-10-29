@@ -1,0 +1,56 @@
+device_type: qemu
+job_name: qemu arm64 ramdisk
+
+timeouts:
+  job:
+    minutes: 15
+  action:
+    minutes: 5
+  connection:
+    minutes: 3
+
+priority: medium
+visibility: public
+context:
+  arch: arm64
+  machine: virt
+  netdevice: user
+  cpu: cortex-a57
+  extra_options:
+  - -smp
+  - 1
+
+metadata:
+  source: https://git.linaro.org/lava-team/refactoring.git
+  path: doc/v2/examples/test-jobs/qemu-kernel-standard-sid.yaml
+  build-readme: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/sid/arm64/8/debian-arm64-readme.html
+  build-console: https://ci.linaro.org/view/lava-ci/job/lava-debian-sid-arm64/8/console
+  build-script: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/sid/arm64/8/build-foreign-nfs.sh
+# When modifying the standard qemu test jobs, always keep the builds of the
+# kernel, initrd and rootfs in sync or provide a replacement kernel with all
+# necessary modules built in.
+
+# ACTION_BLOCK
+actions:
+- deploy:
+    timeout:
+      minutes: 5
+    to: tmpfs
+    images:
+      kernel:
+        image_arg: -kernel {kernel} --append 'root=/dev/ram0 rw rootwait rootdelay=5 console=ttyAMA0,38400n8 init=/sbin/init'
+        url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/sid/arm64/8/vmlinuz-4.9.0-2-arm64
+        sha256sum: 4dc0363bafc93f48e5b60ada3502394f61d9f1cfbf9059ceed30533aca16d706
+      initrd:
+        image_arg: -initrd {initrd}
+        url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/sid/arm64/8/initrd.img-4.9.0-2-arm64
+        sha256sum: 4dfdcf9053bea72d7bc1c37f77f43c4447422c68f4ea8b99c6690de2e7f6e3e4
+
+# BOOT_BLOCK
+- boot:
+    method: qemu
+    media: tmpfs
+    timeout:
+      minutes: 2
+    prompts:
+    - '\(initramfs\)'

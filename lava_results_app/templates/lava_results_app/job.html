@@ -1,0 +1,191 @@
+{% extends "layouts/content.html" %}
+{% load i18n %}
+{% load utils %}
+{% load django_tables2 %}
+
+{% block content %}
+    <h2>LAVA Results for {{ job_link }}
+    {% if not failed_definitions %}
+      <span
+          class="label {% if job.health == job.HEALTH_COMPLETE %}label-success{% else %}label-warning{% endif %}"
+          {% if job.health == job.HEALTH_COMPLETE %}title="All submitted definitions have started execution."{% endif %}>{{ job.get_state_display }}
+      </span>
+    {% endif %}
+    </h2>
+
+    {% if failed_definitions %}
+        <div class="alert alert-warning alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        <p><b>Warning</b>: some submitted test definitions did not start execution.</p>
+        <ul>
+            {% for item in failed_definitions %}
+            <li><dl class="dl-horizontal">
+                {% for key, value in item.items %}
+                    <dt>{{ key }}</dt>
+                    <dd>{{ value }}</dd>
+                {% endfor %}
+            </dl></li>
+            {% endfor %}
+        </ul>
+        </div>
+    {% endif %}
+
+<div class="row">
+  <div class="col-md-4">
+    <h4 class="modal-header">Exports
+        </h4>
+    <dl class="dl-horizontal">
+      <dt>Test results summary :</dt>
+      <dd><a class="btn btn-xs btn-info" href="{% url 'lava.results.testjob_yaml_summary' job.id %}"
+         title="Download test job summary as YAML"><span class="glyphicon glyphicon-download"></span> YAML</a></dd>
+      <dt>Test results :</dt>
+      <dd><a class="btn btn-xs btn-info" href="{% url 'lava.results.testjob_csv' job.id %}"
+         title="Download results as CSV"><span class="glyphicon glyphicon-download"></span> CSV</a> or <a
+              class="btn btn-xs btn-info" href="{% url 'lava.results.testjob_yaml' job.id %}"
+         title="Download results as YAML"><span class="glyphicon glyphicon-download"></span> YAML</a></dd>
+      <dt>Job metadata :</dt>
+      <dd><a class="btn btn-xs btn-info" href="{% url 'lava.results.job.metadata' job.id %}"
+         title="Download metadata as YAML"><span class="glyphicon glyphicon-download"></span> YAML</a></dd>
+    </dl>
+  </div>
+  <div class="col-md-4">
+    <h4 class="modal-header">Actions</h4>
+    <a href="#" data-toggle="modal" data-target="#similar_jobs_modal" class="btn btn-primary">Similar jobs</a>
+  </div>
+  <div class="col-md-4">
+    <h4 class="modal-header">Details</h4>
+    {% if job.actual_device %}
+    <dl class="dl-horizontal">
+        <dt>Device :</dt>
+        <dd><a href="{{ job.actual_device.get_absolute_url }}">{{ job.actual_device.hostname }}</a></dd>
+    {% endif %}
+{% if job.is_multinode %}
+    <dl class="dl-horizontal">
+{% for role in job.sub_jobs_list %}
+  {% if role.id != job.id %}
+     <dt>{{ role.device_role }} role:</dt>
+     <dd><a href="{{ role.results_link }}">{{ role.sub_id }}</a> ({{ role.id }})</dd>
+  {% else %}
+     <dt>{{ role.device_role }} role:</dt>
+     <dd>{{ role.sub_id }} ({{ role.id }})</dd>
+  {% endif %}
+{% endfor %}
+{% endif %}
+    </dl>
+  </div>
+</div>
+    {% render_table suite_table %}
+<div class="panel-group" id="results_accordion">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4><a data-toggle="collapse" data-parent="#results_accordion" href="#metadata_collapse">
+        Metadata
+      </a>
+      </h4>
+    </div>
+  {% spaceless %}
+    <div id="metadata_collapse" class="panel-collapse collapse">
+      <div class="panel-body">
+      <p>The <b>key</b> is the name of the metadata named attribute which can be used in query conditions.
+          Values relating to devices, device-types and URLs are formatted as links. Due to
+          the variation between different git server interfaces, it is not possible to construct
+          a full URL to the test definition file. The commit id of the test definition is part of
+          the <i>lava</i> results for the job.
+      </p>
+      <p>Inline test definitions which do not call <code>lava-test-case</code> will not record any
+      results and are shown in the metadata with the <code>omitted</code> prefix.</p>
+      <p>Attributes relating to items which can repeat within a single job include a number representing
+          the sequence of that item within the job. For example, <i>boot.0.method</i> is the name of an
+          attribute containing information on the first boot method used in the job. <i>boot.0.commands</i>
+          would be an attribute containing information on the commands used by the first boot method in
+          the job.
+      </p>
+      <p>Metadata submitted as part of the job submission is also included, if present.</p>
+       <div class="row">
+       <div class="col-xs-12">
+        <ul>
+          {% for key, value in metadata.items %}
+              {% if 'target' in key %}
+                  <li><b>{{ key }}</b>:
+                  {{ key|markup_metadata:value }}</li>
+              {% elif 'deploy' in key %}
+                  <li><b>{{ key }}</b>:
+                  {{ value }}</li>
+              {% elif 'omit.' in key %}
+                  <!-- inline without test cases -->
+              {% elif 'boot' in key %}
+                  <li><b>{{ key }}</b>:
+                  {{ value }}</li>
+              {% elif 'test' in key %}
+                  <li><b>{{ key }}</b>:
+                  {{ key|markup_metadata:value }}</li>
+              {% elif 'parameters' in key %}
+                  <li><b>{{ key }}</b>:
+                  <ul>{% for paramkey, paramvalue in value.items %}
+                      <li>{{ paramkey }}: {{ paramvalue }}</li>
+                      {% endfor %}
+                  </ul></li>
+              {% else %}
+                  <li><b>{{ key }}</b>:
+                  {{ value }}</li>
+              {% endif %}
+          {% endfor %}
+        </ul>
+        </div>
+        </div>
+      </div>
+    </div>
+  {% endspaceless %}
+  </div>
+ </div>
+
+<div class="panel-group" id="notifications_accordion">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4><a data-toggle="collapse" data-parent="#notifications_accordion" href="#notification_collapse">
+        Notifications
+      </a>
+      </h4>
+    </div>
+  {% spaceless %}
+    <div id="notification_collapse" class="panel-collapse collapse">
+      <div class="panel-body">
+        <dl class="dl-horizontal">
+          {% for recipient in job.notification.notificationrecipient_set.all %}
+          <dt>Recipient</dt>
+          {% if recipient.method == 1 %}
+          <dd>{{ recipient.irc_handle_name }} on {{ recipient.irc_server_name }}</dd>
+          {% else %}
+          <dd>{{ recipient.email_address }}</dd>
+          {% endif %}
+          <dt>Method</dt>
+          <dd>{{ recipient.get_method_display }}</dd>
+          <dt>Status</dt>
+          <dd>{{ recipient.get_status_display }}</dd>
+          <br/>
+          {% empty %}
+          No notifications for this job.
+          {% endfor %}
+        </dl>
+      </div>
+    </div>
+  {% endspaceless %}
+  </div>
+</div>
+
+{% include "_similar_jobs.html" %}
+{% include "_bug_links.html" %}
+
+{% endblock %}
+{% block scripts %}
+<script type="text/javascript">
+  var condition_choices = JSON.parse($("#id_condition_choices").val());
+  var content_types = JSON.parse($("#id_available_content_types").val());
+  var bug_links_url = "{% url 'lava.results.get_bug_links_json' %}";
+  var delete_bug_url = "{% url 'lava.results.delete_bug_link' %}";
+  var csrf_token = '{{csrf_token}}';
+</script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/tables.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/similar-jobs.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_results_app/js/bug-links.min.js"></script>
+{% endblock %}

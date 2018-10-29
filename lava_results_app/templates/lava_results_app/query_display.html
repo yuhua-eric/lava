@@ -1,0 +1,91 @@
+{% extends "layouts/content.html" %}
+{% load i18n %}
+{% load keep_spacing %}
+{% load django_tables2 %}
+{% load results_accessibility_tags %}
+
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}lava_results_app/css/query.css"/>
+{% endblock %}
+
+{% block content %}
+
+{% is_accessible_by query request.user as is_accessible %}
+
+<h2 class="modal-header">Query "{{ query.name }}" matches ({{ query.content_type.name }})
+  {% if is_accessible %}
+  <small><a href="{% url 'lava.results.query_detail' query.owner.username query.name %}" class="btn btn-xs btn-info"><span class="glyphicon glyphicon-eye-open"></span> Query settings</a></small>
+  {% endif %}
+</h2>
+
+  {% if omitted %}
+  <div class="alert alert-info">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <strong>This query has some of the results omitted.</strong> Click
+    <strong><a id="omitted_link" href="#" data-toggle="modal" data-target="#omitted_modal">here</a></strong> for the list of omitted results.
+  </div>
+
+  <div id="omitted_modal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title">Omitted results</h4>
+        </div>
+        <div class="modal-body">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Result</th>
+                <th>End time</th>
+                <th>Include</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for result in omitted %}
+              <tr class="{% cycle 'odd' 'even' %}">
+                <td>
+                  <a href="{{ result.get_absolute_url }}" target="_blank">{{ result }}</a>
+                </td>
+                <td>{{ result.get_end_datetime }}</td>
+                <td><a href="{{ query.get_absolute_url }}/{{ result.id }}/+include-result"><span class="glyphicon glyphicon-plus"></span></a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <small><a href="{% url 'lava.results.query_custom' %}?entity={{ entity }}&conditions={{ conditions }}" class="btn btn-xs btn-success"><span class="glyphicon glyphicon-link"></span> This query by URL</a></small>
+  <small><a href="{% url 'lava.results.query_export'  query.owner.username query.name %}" class="btn btn-xs btn-primary"><span class="glyphicon glyphicon-export"></span> Export as CSV</a></small>
+  <small><a href="{% url 'lava.results.chart_custom' %}?entity={{ entity }}&conditions={{ conditions }}&type=pass/fail" class="btn btn-xs btn-info"><span class="glyphicon glyphicon-align-left"></span> View Chart</a></small>
+  <small><a href="{% url 'lava.results.chart_add' %}?query_id={{ query.id }}" class="btn btn-xs btn-primary"><span class="glyphicon glyphicon-plus"></span> Create New Chart</a></small>
+{% spaceless %}
+<h4>Last updated:
+    {% if query.is_live %} Live query
+    {% elif not conditions %}
+        Never
+    {% else %}
+        <span title="{{ query.last_updated }}">{{query.last_updated|timesince }} ago.
+    {% endif %}</h4>
+{% endspaceless %}
+{% render_table query_table %}
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/tables.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_server/js/bootbox.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_results_app/js/bootbox.data.toggle.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function () {
+  add_bootbox_data_toggle();
+});
+</script>
+{% endblock %}

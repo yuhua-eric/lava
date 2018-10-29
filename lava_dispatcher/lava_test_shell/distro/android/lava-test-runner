@@ -1,0 +1,65 @@
+set +x
+
+LCK=${LCK-"/lava-test-runner.lck"}
+
+#make sure we are only run once
+if [ ! -f ${LCK} ] ; then
+	( flock -n 9 || exit 1 ; true ) 9>${LCK}
+else
+	exit 0
+fi
+
+if [ "$1" = "" ]
+then
+    LAVA_PATH="/data/lava"
+else
+	LAVA_PATH=$1
+fi
+
+WORKFILE="$LAVA_PATH/lava-test-runner.conf"
+RESULTSDIR="$LAVA_PATH/results"
+BINDIR="$LAVA_PATH/../bin"
+
+. $BINDIR/lava-common-functions
+
+cleanup()
+{
+  signal "<LAVA_TEST_RUNNER EXIT>"
+}
+
+{
+	trap cleanup INT TERM EXIT
+
+	export PATH=${BINDIR}:${PATH}
+	mkdir -p ${RESULTSDIR}
+
+	signal "<LAVA_TEST_RUNNER disabling suspend and waiting for home screen ...>"
+	disablesuspend.sh
+
+	# move the workfile to something timestamped and run that. This
+	# prevents us from running the same thing again after a reboot
+	TS=`date +%s`
+	mv ${WORKFILE} ${WORKFILE}-${TS}
+	WORKFILE=${WORKFILE}-${TS}
+
+    for line in $(cat ${WORKFILE} | grep -v LAVA_SIGNAL); do
+		# we don't have "basename" on android, but this does the
+		# equivalent under mksh
+		testdir=${line%/} # trim off trailing slash if it exists
+		test=${testdir/*\//}
+		odir=${RESULTSDIR}/${test}-`date +%s`
+		mkdir ${odir}
+
+		if [ -f ${line}/install.sh ]; then
+			/system/bin/sh ${line}/install.sh
+			R=$?
+			echo ${R} > ${odir}/install_return_code
+			if [ ${R} -ne 0 ] ; then
+                signal "<LAVA_TEST_RUNNER INSTALL_FAIL>"
+				continue
+			fi
+		fi
+
+		lava-test-shell --output_dir ${odir} /system/bin/sh -e "${line}/run.sh"
+	done
+}

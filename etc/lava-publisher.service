@@ -1,0 +1,15 @@
+[Unit]
+Description=LAVA publisher
+After=network.target remote-fs.target
+
+[Service]
+Type=simple
+Environment=LOGLEVEL=DEBUG
+EnvironmentFile=-/etc/default/lava-publisher
+EnvironmentFile=-/etc/lava-server/lava-publisher
+ExecStart=/usr/bin/lava-server manage lava-publisher --level $LOGLEVEL
+TimeoutStopSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

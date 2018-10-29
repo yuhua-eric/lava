@@ -1,0 +1,24 @@
+.form-field, #condition_form p {
+    margin-bottom: 5px;
+    vertical-align: top;
+}
+
+.form-field label, #condition_form p label {
+    vertical-align: top;
+    width: 120px;
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.group-link {
+    margin: 0 0 0 10px;
+    float: left;
+}
+
+.btn-group-headline {
+    margin: 0 0 5px 0;
+}
+
+.help-text {
+    font-size: 11px;
+}

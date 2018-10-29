@@ -1,0 +1,10 @@
+/var/log/lava-server/django.log {
+	monthly
+	rotate 12
+	compress
+	delaycompress
+	missingok
+	su lavaserver lavaserver
+	notifempty
+	create 644 lavaserver adm
+}

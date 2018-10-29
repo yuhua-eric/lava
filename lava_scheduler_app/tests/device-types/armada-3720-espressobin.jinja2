@@ -1,0 +1,10 @@
+{# device_type = "armada-370-espressobin" #}
+{% extends 'base-uboot.jinja2' %}
+{% set console_device = console_device|default('ttyMV0') %}
+{% set baud_rate = baud_rate|default(115200) %}
+{% set bootloader_prompt = bootloader_prompt|default('Marvell>>') %}
+{% set booti_kernel_addr = '0x04300000' %}
+{% set booti_ramdisk_addr = '0x06300000' %}
+{% set booti_dtb_addr = '0x04200000' %}
+{% set base_ip_args = 'ip=dhcp' %}
+{% set uboot_mkimage_arch = 'arm64' %}

@@ -1,0 +1,232 @@
+{% extends "layouts/content.html" %}
+{% load utils %}
+{% block styles %}
+<style>
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Chrome/Safari/Opera */
+     -khtml-user-select: none; /* Konqueror */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  not supported by any browser */
+}
+</style>
+{% endblock %}
+{% block content %}
+<h2>Job definition file - {% if job.is_multinode %}{{ job.sub_id }}{% else %}{{ job.id }}{% endif %}
+ <a class="btn btn-xs btn-info" href="{% url 'lava.scheduler.job.definition.plain' job.pk %}" title="Download as text file"><span class="glyphicon glyphicon-download"></span> download</a></h2>
+{% if job.is_multinode %}
+     {{ job.sub_id }} is part of a multinode job. Use the Multinode Definition to resubmit.
+{% endif %}
+
+<div class="row">
+  <div class="col-md-4">
+    <h4 class="modal-header">Device</h4>
+    <dl class="dl-horizontal">
+    {% if job.actual_device %}
+      <dt>Name</dt>
+      <dd><a href="{{ job.actual_device.get_absolute_url }}">{{ job.actual_device.hostname }}</a> <a
+      href="{% url 'lava.scheduler.device_report' job.actual_device.pk %}">(reports)</a></dd>
+    {% endif %}
+
+    {% if job.requested_device_type %}
+      <dt>Requested type</dt>
+      <dd><a href="{{ job.requested_device_type.get_absolute_url }}">{{ job.requested_device_type }}</a> <a href="{% url 'lava.scheduler.device_type_report' job.requested_device_type %}">(reports)</a></dd>
+    {% endif %}
+    </dl>
+  </div>
+  <div class="col-md-4">
+    <h4 class="modal-header">Logs</h4>
+    <div class="row">
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+          <li><a href="{% url 'lava.scheduler.job.detail' job.pk %}" class="btn btn-primary">Complete log</a></li>
+        {% if job.results_link %}
+          <li><a href="{{ job.results_link }}" class="btn btn-success">Results</a></li>
+        {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <h4 class="modal-header">Actions</h4>
+    <div class="row">
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+        {% if show_resubmit and not job.is_multinode %}
+          <li><a href="{% url 'lava.scheduler.job.resubmit' job.pk %}" class="btn btn-default">Resubmit</a></li>
+        {% endif %}
+      {% if show_cancel %}
+      <li><a class="btn btn-warning" id="cancel" href="{% url 'lava.scheduler.job.cancel' job.pk %}">Cancel</a></li>
+      {% elif show_fail %}
+      <li><a class="btn btn-danger" id="fail" title="This should not be used if lava-run is still running" href="{% url 'lava.scheduler.job.fail' job.pk %}">Fail</a></li>
+      {% endif %}
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+        {% if user.is_authenticated %}
+        <li><a href="{% url 'lava.scheduler.job.toggle_favorite' job.pk %}"  class="btn btn-info">
+            {% if is_favorite %}
+              Remove from favorites
+            {% else %}
+              Add to favorites
+            {% endif %}
+        </a></li>
+        {% endif %}
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <ul class="nav nav-pills nav-stacked">
+        {% if job.is_multinode %}
+          <li><a href="{% url 'lava.scheduler.job.multinode_definition' job.pk %}" class="btn btn-info">Multinode Definition</a></li>
+        {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% if job.is_multinode %}
+<div class="row">
+  <div class="col-md-6">
+    <h4 class="modal-header">Sub jobs</h4>
+    <dl class="dl-horizontal">
+    {% for subjob in job.sub_jobs_list %}
+      <dt><a href="{% url 'lava.scheduler.job.detail' subjob.sub_id %}">{{ subjob.sub_id }}</a>
+        {% if '0' in subjob.sub_id and '0' not in job.sub_id %}
+            <abbr title="view job {{ subjob.sub_id }} to see the results, if any.">(?)</abbr>
+        {% endif %}
+      </dt>
+      <dd>
+    {% if subjob.actual_device.hostname %}
+      on: <a href="{{ subjob.actual_device.get_absolute_url }}">{{ subjob.actual_device.hostname }}</a>
+      as: {{ subjob.device_role }}&nbsp;
+    {% else %}
+      No device assigned as {{ subjob.device_role }}.</dd>
+    {% endif %}
+      </dd>
+    {% endfor %}
+    </dl>
+  </div>
+</div>
+{% endif %}
+
+<ul class="nav nav-tabs">
+  <li class="active"><a href="#YAML" data-toggle="tab">Definition</a></li>
+  <li><a href="#pipeline" data-toggle="tab">Pipeline</a></li>
+</ul>
+<div class="tab-content">
+
+  <div class="tab-pane active" id="YAML">
+<h4 class="modal-header">Definition</h4>
+<div class="pull-right"><small><a href="javascript: void(0);" id="copy_link"
+   class="btn btn-xs btn-default"><span class="glyphicon glyphicon-copy"></span> Copy to clipboard</a></small></div><span
+   style="display: none" id="job_definition_text">{{ job.display_definition|replace_python_unicode }}</span><br/>
+{% with job.display_definition|split_definition as definition_data %}
+{% for line in definition_data %}
+    <div class="row">
+  <div class="col-md-1 noselect" id="defline{{ forloop.counter }}">
+    <a href="#defline{{ forloop.counter }}">{{ forloop.counter }}</a>
+   </div>
+   <div class="col-md-8">
+    <span style="font-family: monospace; white-space: pre;">{{ line.rstrip|replace_python_unicode }}</span>
+   </div>
+    </div>
+{% endfor %}
+{% endwith %}
+ </div>
+  <div class="tab-pane" id="pipeline">
+      <h2>Pipeline Description <a
+      class="btn btn-xs btn-info" href="{% url 'lava.scheduler.job.description.yaml' job.id %}"
+       title="Download YAML description"><span class="glyphicon glyphicon-download"></span> YAML</a></h2>
+       <p><a href="{{ STATIC_URL }}docs/v2/glossary.html#term-pipeline">Pipeline</a> jobs use
+       the job definition to generate a descriptive YAML file when the pipeline is validated.
+       The file represents the data sent to the dispatcher at the start of the job, including
+       details of the device as well as the job parameters and the details of the parameters
+       sent to each of the deploy, boot and test actions in the job pipeline.</p>
+       <p>Click on the Action headings below to see some of the structural information
+       from the description file for this job or download the complete file as YAML using
+       the link above. The name of the action can be used to change the timeout of that
+       specific action. e.g.</p>
+  <pre>
+timeouts:
+  apply-overlay-image:
+    minutes: 5</pre>
+       <p>The information in this pane is based on the validation step prior to the job starting
+       to run. This includes checks on remote URLs but does not operations which are only done at
+       runtime. Therefore, the filesize of remote downloads can be displayed, based on the headers
+       when checking that the URL was correct - checksums of the actual download will not appear
+       as the actual download only happens after the job has started.</p>
+  {% get_pipeline_levels pipeline as levels %}
+  {% get_pipeline_sections pipeline as sections %}
+
+    <h4 id="sections" class="modal-header">Sections</h4>
+    <div class="row">
+      <div class="col-md-6">
+        <ul class="nav nav-pills">
+  {% for item in sections %}
+      {% for section, level in item.items %}
+      <li><a href="#{{ level }}" class="btn btn-primary">{{ section }}</a></li>
+      {% endfor %}
+  {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+<h2>Pipeline</h2>
+{% for level, data in levels.items %}
+  [ <a href="#sections">Sections</a> ] [ <a href="#action-list">List of actions</a> ]
+      <h3 id="{{ level }}">{{ level }}: {{ data.summary }}</h3>
+        <dl class="dl-horizontal">
+            <dt>name</dt>
+            <dd>{{ data.name }}</dd>
+            <dt>description</dt>
+            <dd>{{ data.description }}</dd>
+            <dt>output</dt>
+            <dd><a href="{% url 'lava.scheduler.job.detail' job.id %}#action_{{ level|level_replace }}">{{ job.id }}#action_{{ level }}</a></dd>
+        {% if data.timeout %}
+            <dt>timeout</dt>{% comment %}
+            add a link to help content of this topic
+            {% endcomment %}
+            <dd>{{ data.timeout.duration|floatformat:"0" }} seconds</dd>
+        {% if data.url %}
+            <dt>URL</dt>
+            <dd>{{ data.url|urlize }}</dd>
+        {% endif %}
+        {% if data.size %}
+            <dt>size</dt>
+            <dd>{{ data.size|filesizeformat }}</dd>
+        {% endif %}
+        {% endif %}
+        </dl>
+  {% endfor %}
+
+    <h2 id="action-list">Pipeline actions</h2>
+  <ul>
+  {% for level, data in levels.items %}
+      <li><a href="#{{ level }}">{{ level }} {{ data.name }}</a></li>
+  {% endfor %}
+  </ul>
+  <a href="#sections">Pipeline sections</a>
+
+
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/job-definition.min.js"></script>
+<script type="text/javascript">
+  $(document).ready(
+    function() {
+      hash = location.hash;
+      if(hash.startsWith("#pipeline")) {
+        $("[href='#pipeline']").tab("show");
+        level = hash.slice(10);
+        window.location = '#' + level;
+      }
+    }
+  );
+</script>
+{% endblock %}

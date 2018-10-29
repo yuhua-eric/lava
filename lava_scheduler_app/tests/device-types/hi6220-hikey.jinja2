@@ -1,0 +1,69 @@
+{# device_type: hi6220-hikey #}
+{% extends 'base.jinja2' %}
+{% set root_device = root_device | default('/dev/mmcblk0p9') %}
+{% set base_kernel_args = base_kernel_args|default('efi=noruntime backend=ramoops ramoops.mem_address=0x30000000 ramoops.mem_size=0x10000') %}
+{% set console_device = console_device|default('ttyAMA3') %}
+{% set baud_rate = baud_rate|default('115200') %}
+{% set boot_character_delay = boot_character_delay|default(300) %}
+{% block body %}
+
+adb_serial_number: '{{ adb_serial_number|default('0000000000') }}'
+fastboot_serial_number: '{{ fastboot_serial_number|default('0000000000') }}'
+fastboot_options: {{ fastboot_options|default([]) }}
+flash_cmds_order: ['ptable', 'fastboot', 'nvme', 'boot', 'cache', 'system', 'userdata']
+
+actions:
+  deploy:
+    methods:
+      lxc:
+      fastboot:
+      ssh:
+        options:
+{{ ssh_options }}
+        host: '{{ ssh_host|default('') }}'
+        port: {{ ssh_port|default(22) }}
+        user: {{ ssh_user|default('root') }}
+        identity_file: {{ ssh_identity_file }}
+    connections:
+      lxc:
+      serial:
+  boot:
+    connections:
+      lxc:
+      serial:
+    methods:
+      ssh:
+      fastboot:
+        - boot
+      grub-efi:
+        reset_device: False
+        line_separator: unix
+        menu_options: fastboot
+        parameters:
+          bootloader_prompt: {{ grub_efi_bootloader_prompt|default('grub>') }}
+        installed:
+          parameters:
+            interrupt_prompt: "Android Fastboot mode"
+            interrupt_string: ' '
+          commands:
+            - search.fs_label {{fs_label|default('rootfs')}} root
+            - linux ($root)/boot/{{kernel}} console=tty0 console={{console_device}},{{baud_rate}} root={{root_device}} rootwait rw {{base_kernel_args}} {{extra_kernel_args}}
+            - devicetree ($root)/boot/{{devicetree}}
+            - boot
+      uefi-menu:
+        menu_options: fastboot
+        parameters:
+          interrupt_prompt: {{ interrupt_prompt|default("The default boot selection will start in") }}
+          interrupt_string: {{ interrupt_string|default("' '") }}
+          item_markup:
+            - "["
+            - "]"
+          item_class: '0-9'
+          separator: ' '
+          bootloader_prompt: "{{ bootloader_prompt|default('Start:') }}"
+        fastboot:
+        - select:
+            items:
+             - {{ fastboot_select_item|default('boot from eMMC') }}
+
+{% endblock body %}

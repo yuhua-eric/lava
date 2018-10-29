@@ -1,0 +1,78 @@
+device_type: qemu
+job_name: kvm-multinode
+
+timeouts:
+  job:
+    minutes: 5
+  action:
+    minutes: 1
+visibility: public
+
+context:
+  arch: amd64
+
+protocols:
+  lava-multinode:
+    target_group: arbitrary-group-id  # only for unittest support
+    role: server
+    tags:
+    - testtag
+#    roles:
+#      kvm01: client
+#      kvm02: server
+    group_size: 2
+    timeout:
+      seconds: 60
+
+priority: medium
+
+metadata:
+  source: lava_scheduler_app unit tests
+
+actions:
+
+    - deploy:
+        timeout:
+          minutes: 2
+        to: tmpfs
+        images:
+          rootfs:
+            url: http://images.validation.linaro.org/kvm-debian-wheezy.img.gz
+            image_args: -drive format=raw,file={rootfs}
+        compression: gz
+        os: debian
+        root_partition: 1
+        role: server
+
+    - boot:
+        method: qemu
+        media: tmpfs
+        failure_retry: 2
+        role: server
+        prompts: "root@debian:"
+
+    - test:
+        failure_retry: 3
+        role: server
+        name: kvm-basic-multinode
+        definitions:
+            - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+              from: git
+              path: lava-test-shell/multi-node/multinode01.yaml
+              name: multinode-basic
+
+context:
+  arch: amd64
+
+notify:
+  criteria:
+    status: complete
+  recipients:
+    - to:
+        user: admin
+        method: email
+  compare:
+    query:
+      entity: testjob
+      conditions:
+        submitter: admin

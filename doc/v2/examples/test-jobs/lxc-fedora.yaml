@@ -1,0 +1,42 @@
+device_type: lxc
+job_name: lxc-fedora
+timeouts:
+  job:
+    minutes: 15
+  action:
+    minutes: 5
+priority: medium
+visibility: public
+
+metadata:
+  source: https://git.linaro.org/lava-team/refactoring.git
+  path: lxc-fedora.yaml
+
+protocols:
+  lava-lxc:
+    name: pipeline-lxc-test
+    distribution: fedora
+    release: '26'
+    arch: amd64
+
+actions:
+- deploy:
+    timeout:
+      minutes: 30
+    to: lxc
+
+- boot:
+    prompts:
+    - '[root@(.*) /]#'
+    timeout:
+      minutes: 5
+    method: lxc
+
+- test:
+    timeout:
+      minutes: 5
+    definitions:
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: smoke-tests

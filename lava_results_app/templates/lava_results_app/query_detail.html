@@ -1,0 +1,348 @@
+{% extends "layouts/content.html" %}
+{% load i18n %}
+{% load keep_spacing %}
+{% load django_tables2 %}
+{% load results_accessibility_tags %}
+
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}lava_results_app/css/query.css"/>
+{% endblock %}
+
+{% block content %}
+
+{% is_accessible_by query request.user as is_accessible %}
+
+{% spaceless %}
+<h1>Query {{ query.name }}
+  <small><a id="query_results" class="btn btn-xs btn-success {% if not query.is_live and not query.has_view %}disabled{% endif %}" title="{% if query.has_view or query.is_live %}View query results{% else %}Results not available, please run the query{% endif %}"
+            {% if not query.is_live and not query.has_view %}onclick="javascript:void(0)" style="pointer-events: auto;"
+            {% else %}href="{{ query.get_absolute_url }}"
+            {% endif %}><span class="glyphicon glyphicon-signal"></span> Results</a></small></h1>
+{% endspaceless %}
+
+<div class="row">
+  <div class="col-md-6">
+    <h4 class="modal-header">Summary</h4>
+
+    <dl class="dl-horizontal">
+
+    <dt>Status</dt>
+    <dd>
+      {% if query.is_published %}
+      Published
+      {% else %}
+      Unpublished
+      {% endif %}
+    </dd>
+    <dt>Content Type</dt>
+    <dd>
+      {{ query.content_type.name }}
+    </dd>
+    <dt>Results limit</dt>
+    <dd>
+      {{ query.limit }}
+    </dd>
+
+    <dt>Last updated</dt>
+    <dd id="last_updated">
+      {% if query.is_live %}
+      Live query
+      {% elif not query.has_view %}
+      <span class="text-danger">Not available. Please run query first.</span>
+      {% else %}
+      <span title="{{ query.last_updated }}">{{ query.last_updated|timesince }} ago.</span>
+      {% endif %}
+    </dd>
+
+    {% if query.is_published and is_accessible %}
+    <dt>Query Group label</dt>
+    <dd>
+      <a href="#" data-toggle="modal" data-target="#query_group_modal">
+	<div style="float: left;">{{ query.query_group|default:"Click here to select"}}</div>
+      </a>
+
+      {% if query.query_group %}
+      <div id="group_link" class="group-link">
+	<a href="{% url 'lava.results.query_list' %}#{{ query.query_group|iriencode }}">Group link</a>
+      </div>
+      {% else %}
+      <div id="group_link" class="group-link" style="display: none;">
+	<a href="{% url 'lava.results.query_list' %}#">Group link</a>
+      </div>
+      {% endif %}
+      &nbsp;&nbsp;
+      <button class="btn btn-info btn-xs" data-toggle="tooltip" data-placement="right" title="Collect similar reports into a single table on the image reports list.">?</button>
+
+    </dd>
+    <dt>Group edit permission</dt>
+    <dd>
+      <a href="#" data-toggle="modal" data-target="#group_permission_modal">
+	<div style="float: left;">{{ query.group|default:"Click here to select"}}</div>
+      </a>
+      &nbsp;&nbsp;
+      <button class="btn btn-info btn-xs" data-toggle="tooltip" data-placement="right" title="A group of users already listed on the Profile page.">?</button>
+      <div style="clear: both;"></div>
+    </dd>
+    {% endif %}
+    <dt>Maintainer</dt>
+    <dd>
+      {{ query.owner }}&nbsp;&nbsp;
+      <button class="btn btn-info btn-xs" data-toggle="tooltip" data-placement="right" title="User who created the query.">?</button>
+    </dd>
+
+    <dt>Description</dt>
+    <dd>
+    {{ query.description|keep_spacing|linebreaks }}
+    </dd>
+    </dl>
+  </div>
+
+  <div class="col-md-6">
+    <h4 class="modal-header">Actions</h4>
+    <div class="btn-group btn-group-justified">
+      <div class="btn-group">
+        <a class="btn btn-primary {% if not is_accessible %}disabled{% endif %}"
+           {% if not is_accessible %}onclick="javascript:void(0)" style="pointer-events: auto;" title="Insufficent permissions"
+           {% else %}href="{{ query.get_absolute_url }}/+edit"
+           {% endif %}>
+          <span class="glyphicon glyphicon-pencil"></span> Edit</a>
+      </div>
+      <div class="btn-group">
+        <a class="btn btn-danger {% if not is_accessible %}disabled{% endif %}"
+           {% if not is_accessible %}onclick="javascript:void(0)" style="pointer-events: auto;" title="Insufficent permissions"
+           {% else %}href="{{ query.get_absolute_url }}/+delete" data-toggle="confirm" data-title="Are you sure you want to delete this Query?"
+           {% endif %}>
+          <span class="glyphicon glyphicon-trash"></span> Delete</a>
+      </div>
+      <div class="btn-group">
+        <a href="{{ query.get_absolute_url }}/+copy?conditions={{query_conditions}}" class="btn btn-success"><span class="glyphicon glyphicon-save"></span> Copy</a>
+      </div>
+      <div class="btn-group">
+        <a class="btn btn-default {% if not is_accessible %}disabled{% endif %}"
+           {% if not is_accessible %}onclick="javascript:void(0)" style="pointer-events: auto;" title="Insufficent permissions"
+           {% else %}href="{{ query.get_absolute_url }}/+toggle-published"
+           {% endif %}>
+          <span class="glyphicon glyphicon-share"></span>
+	  {% if query.is_published %}
+	  Unpublish
+	  {% else %}
+	  Publish
+	  {% endif %}
+	</a>
+      </div>
+      <div class="btn-group">
+        <a id="query_refresh" href="javascript: void(0);" class="btn btn-warning {% if not is_accessible or query.is_live or not query_conditions %}disabled{% endif %}"
+           {% if not is_accessible or query.is_live or not query_conditions %}style="pointer-events: auto;"
+           {% endif %}
+           {% if not is_accessible %}
+           title="Insufficient permissions"
+           {% elif query.is_live %}
+           title="Cannot run live queries"
+           {% elif not query_conditions %}
+           title="No conditions present. Please add some and try again."
+           {% endif %}>
+          <span class="glyphicon glyphicon-refresh"></span> Run query</a>
+      </div>
+    </div>
+
+    <div id="refresh_loading_dialog">
+      <div>Running query. Please wait.</div>
+    </div>
+
+  </div>
+</div>
+
+<h4 class="modal-header">Conditions</h4>
+
+<dl class="dl-horizontal">
+
+<div class="fields-container">
+  <table id="conditions_container" class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Entity</th>
+            <th>Field</th>
+            <th>Operator</th>
+            <th>Value</th>
+            {% if is_accessible %}
+            <th>Edit</th>
+            <th>Remove</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for condition in query.querycondition_set.all %}
+    <tr id="condition_row_{{ condition.id }}">
+      <td>
+	{{ condition.table.model }}
+      </td>
+      <td>
+	{{ condition.field }}
+      </td>
+      <td>
+	{{ condition.operator }}
+      </td>
+      <td>
+	{{ condition.value|safe }}
+      </td>
+      {% if is_accessible %}
+      <td>
+	<a class="glyphicon glyphicon-edit" aria-hidden="true" href="javascript: void(0);" onclick="open_condition_modal('{{ query.name }}','{{ condition.id }}','{{ condition.table.id }}','{{ condition.field }}','{{ condition.operator }}','{{ condition.value }}');">
+	</a>
+      </td>
+      <td>
+	<a class="glyphicon glyphicon-remove" aria-hidden="true" href="{% url 'lava.results.query_remove_condition' query.owner.username query.name condition.id %}">
+	</a>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <a onclick="open_condition_modal('{{ query.name }}');" class="btn btn-sm btn-primary {% if not is_accessible%}disabled{% endif %}" href="javascript: void(0);" >
+    Add new condition
+  </a>
+</div>
+
+<!-- Modal HTML -->
+<div id="query_group_modal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Query group update</h4>
+      </div>
+      <form class="well" id="query_group_form" method="post" action="{% url 'query_add_group' username=query.owner.username name=query.name %}">
+        <div class="modal-body">
+	  {% csrf_token %}
+          <div class="help-text">Type to search for the group label.<br>Available group labels will appear in a list below.<br>Alternatively you can type in a new one.
+          </div>
+          <div style="display: inline;">
+            <label for="query_group">Query Group label:</label>
+          </div>
+          <div class="typeahead__container">
+            <div class="typeahead__field">
+              <div class="typeahead__query">
+                <input id="query_group" name="value" type="search" placeholder="Search" autocomplete="off" value="{{ query.query_group|default:'' }}" />
+              </div>
+            </div>
+          </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal HTML -->
+<div id="group_permission_modal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Group permission update</h4>
+      </div>
+      <form class="well" id="group_permission_form" method="post" action="{% url 'query_select_group' username=query.owner.username name=query.name %}">
+        <div class="modal-body">
+	  {% csrf_token %}
+          <div class="help-text">Type to search for the system group.<br>Available groups will appear in a list below.
+          </div>
+          <div style="display: inline;">
+            <label for="group_permission">Group edit permission:</label>
+          </div>
+          <div class="typeahead__container">
+            <div class="typeahead__field">
+              <div class="typeahead__query">
+                <input id="group_permission" name="value" type="search" placeholder="Search" autocomplete="off" value="{{ query.group|default:'' }}" />
+              </div>
+            </div>
+          </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal HTML -->
+<div id="condition_modal" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Add condition</h4>
+      </div>
+      <div class="modal-body">
+	<div id="condition_errors" class="errorlist" style="color: red;"></div>
+	<form class="well" id="condition_form" method="post" action="/+add-condition">
+	  {% csrf_token %}
+          <div class="help-text" style="margin-left: 10px;">Type to search for the available fields depending on the condition model.<br>Available fields will appear in a list below.
+          </div>
+	  <input type="hidden" id="condition_id" name="id" />
+	  {{ condition_form.as_p }}
+	</form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button id="save_condition" type="button" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+{% is_accessible_by query request.user as is_accessible %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_server/js/jquery.typeahead.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_results_app/js/query.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_server/js/bootbox.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_results_app/js/bootbox.data.toggle.min.js"></script>
+<script type="text/javascript">
+  csrf_token = '{{csrf_token}}';
+  query_name = '{{ query.name }}';
+  query_user = '{{ query.owner.username }}';
+  query_url = '{{ query.get_absolute_url }}';
+  is_updating = '{{ query.is_updating }}';
+  is_live = '{{ query.is_live }}';
+  condition_choices = JSON.parse($("#id_condition_choices").val());
+  query_conditions = '{{ query_conditions }}';
+  initial_operators = Object();
+  $("#id_operator option").each(function() {
+    initial_operators[$(this).val()] = $(this).html();
+  });
+
+  $(document).ready(function () {
+    add_bootbox_data_toggle();
+  });
+</script>
+
+{% if query.is_published and is_accessible %}
+<script>
+  $("#query_group_modal").on('show.bs.modal', function (e) {
+    $("#query_group").val("{{ query.query_group|default:'' }}");
+    $("#query_group").typeahead({
+        source: {querygroups: {ajax: {type:"GET", url: '{% url 'query_group_list' %}', data: {term: "{{query_group}}"}}}},
+        minLength: 1,
+    });
+  });
+
+  $("#group_permission_modal").on('show.bs.modal', function (e) {
+    $("#group_permission").val("{{ query.group|default:'' }}");
+    $("#group_permission").typeahead({
+        source: {groups: {ajax: {type:"GET", url: '{% url 'get_query_group_names' %}', data: {term: $(this).val()}}}},
+        display: ["name"],
+        minLength: 1,
+    });
+  });
+
+</script>
+{% endif %}
+
+{% endblock %}

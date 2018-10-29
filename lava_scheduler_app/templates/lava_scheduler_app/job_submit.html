@@ -1,0 +1,86 @@
+{% extends "layouts/content.html" %}
+
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}lava_scheduler_app/css/jquery-linedtextarea.css"/>
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}lava_scheduler_app/css/scheduler.css"/>
+{% endblock %}
+
+{% block content %}
+
+{% if error %}
+<div class="alert alert-warning alert-dismissable">
+  <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+  <strong>Job submission error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if resubmit_warning %}
+<div class="alert alert-warning alert-dismissable">
+  <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+  <strong>Job submission warning:</strong> {{ resubmit_warning }}
+</div>
+{% endif %}
+<h2>Submit Job</h2>
+
+{% if is_authorized %}
+
+{% if job_id %}
+
+{% url 'lava.scheduler.job.detail' job_id as detail_url %}
+{% url 'lava.scheduler.job.list' as list_url %}
+
+<p>Job submission successfull!</p>
+<p>Job with ID <a href="{{ detail_url }}">{{ job_id }}</a> has been created.</p>
+<p>To view the full job list click <a href="{{ list_url }}">here</a>.</p>
+
+{% elif job_list %}
+{% url 'lava.scheduler.job.list' as list_url %}
+<p>Multinode Job submission successfull!</p>
+<p>Jobs have been created with the IDs:</p>
+<ul>
+{% for job in job_list %}
+  <li><a href="{% url 'lava.scheduler.job.detail' job %}">{{ job }}</a></li>
+{% endfor %}
+</ul>
+<p>To view the full job list click <a href="{{ list_url }}">here</a>.</p>
+
+{% else %}
+<p>Paste your job definition here.</p>
+
+<form action="" method="post">
+  {% csrf_token %}
+  <div>
+    <textarea id="definition-input" name="definition-input" placeholder="Enter your job definition here.">{{ definition_input }}</textarea>
+    <div id="busyIndicator"></div>
+    <div>
+      <div id="valid_container">
+      </div>
+      <div>
+        <input type="checkbox" name="is_favorite" id="is_favorite" {% if is_favorite %} checked {% endif %} />
+        Add to my favorite jobs
+      </div>
+      <div id="submit-container">
+        <input type="hidden" name="is_resubmit" value="true">
+        <button class="btn btn-primary" id="validate" type="button">Validate</button>
+        <button class="btn btn-success" id="submit" type="submit" value="Submit">Submit</button>
+        <span id="validation_note">(Note: Please validate definition before job submission.)</span>
+      </div>
+    </div>
+  </div>
+</form>
+{% endif %}
+
+{% else %}
+<h3>Error:</h3>
+<p>Permission denied. You not have the required permissions to submit new jobs.</p>
+<p>Please contact the administrators.</p>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/jquery-linedtextarea.min.js"></script>
+{% if not job_id %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/job-submit.min.js"></script>
+{% endif %}
+{% endblock %}

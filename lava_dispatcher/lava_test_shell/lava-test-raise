@@ -1,0 +1,19 @@
+
+# Sends a message which raises a TestError
+# using the specified message (which must exist)
+. lava-common-functions
+
+raise_usage () {
+    echo "Usage:"
+    echo "       lava-test-raise MESSAGE"
+    echo ""
+}
+
+if [ -z "${1}" ]; then
+    raise_usage
+    exit 1
+fi
+
+signal "<LAVA_SIGNAL_TESTRAISE $@>"
+# always fail
+exit 1

@@ -1,0 +1,183 @@
+device_type: mustang
+job_name: ssh guest with standard images
+
+timeouts:
+  job:
+    minutes: 60
+  action:
+    minutes: 20
+  connection:
+    minutes: 2
+
+priority: medium
+visibility: public
+
+# PROTOCOLS_BLOCK
+protocols:
+  lava-multinode:
+    roles:
+      guest:
+        connection: ssh
+        count: 3
+        expect_role: host
+        host_role: host
+        request: lava-start
+        timeout:
+          minutes: 15
+      host:
+        count: 1
+        device_type: mustang
+        timeout:
+          minutes: 10
+
+metadata:
+  docs-source: actions-deploy-to-ssh
+  docs-filename: examples/test-jobs/mustang-ssh-guest.yaml
+  build-readme: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/arm64/3/debian-arm64-readme.html
+  build-console: https://ci.linaro.org/view/lava-ci/job/lava-debian-stretch-arm64/3/console
+  build-script: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/arm64/3/build-foreign-nfs.sh
+
+actions:
+- deploy:
+    role:
+      - host
+    authorize: ssh
+    kernel:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/arm64/3/vmlinuz-4.9.0-2-arm64
+      type: zimage
+    modules:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/arm64/3/modules.tar.gz
+      compression: gz
+    nfsrootfs:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/arm64/3/stretch-arm64-nfs.tar.gz
+      compression: gz
+    ramdisk:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/arm64/3/initrd.img-4.9.0-2-arm64
+      compression: gz
+    timeout:
+      minutes: 12
+    to: tftp
+
+# DEPLOY_SSH_BLOCK
+- deploy:
+    role:
+    - guest
+    connection: ssh
+    protocols:
+      lava-multinode:
+      - action: prepare-scp-overlay
+        request: lava-wait
+        # messageID matches hostID
+        messageID: ipv4
+        message:
+          # the key of the message matches value of the host_key
+          # the value of the message gets substituted
+          ipaddr: $ipaddr
+        timeout:  # delay_start timeout
+          minutes: 21
+    timeout:
+      minutes: 22
+    to: ssh
+
+# BOOT_HOST_BLOCK
+- boot:
+    role:
+    - host
+    auto_login:
+      login_prompt: 'login:'
+      username: root
+    commands: nfs
+    method: grub-efi
+    prompts:
+    - 'root@stretch:'
+    timeout:
+      minutes: 5
+
+- boot:
+    role:
+    - guest
+    method: ssh
+    prompts:
+    - 'root@linaro-developer:'
+    parameters:
+      hostID: ipv4  # messageID
+      host_key: ipaddr  # message key
+    timeout:
+      minutes: 23
+
+- test:
+    role:
+    - host
+    definitions:
+    - from: inline
+      name: ssh-inline
+      path: inline/ssh-install.yaml
+      repository:
+        install:
+          deps:
+          - openssh-server
+        metadata:
+          description: install step
+          format: Lava-Test Test Definition 1.0
+          name: install-ssh
+          os:
+          - debian
+          scope:
+          - functional
+        install:
+          deps:
+          - openssh-server
+          - net-tools
+          - iproute2
+        run:
+          steps:
+          - ls -al /root/.ssh/
+          - ifconfig
+          - lava-send ipv4 ipaddr=$(lava-echo-ipv4 eth0)
+          - lava-send lava_start
+          - lava-sync clients
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: smoke-tests
+    - from: git
+      repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      path: lava-test-shell/params/nfs.yaml
+      name: nfs-dns
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/single-node/singlenode03.yaml
+      name: singlenode-advanced
+    timeout:
+      minutes: 30
+
+- test:
+    role:
+    - guest
+    definitions:
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: pre-smoke-tests
+    - from: inline
+      name: ssh-client
+      path: inline/ssh-client.yaml
+      repository:
+        metadata:
+          description: client starts
+          format: Lava-Test Test Definition 1.0
+          name: client-ssh
+          os:
+          - debian
+          scope:
+          - functional
+        run:
+          steps:
+          - lava-sync clients
+          - tar -tzf /$(pwd|awk -F'-' '{print $2}'|awk -F'/' '{print $1}')-overlay*.tar.gz
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: post-smoke-tests
+    timeout:
+      minutes: 5

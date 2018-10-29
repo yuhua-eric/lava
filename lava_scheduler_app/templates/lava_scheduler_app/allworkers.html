@@ -1,0 +1,17 @@
+{% extends "layouts/content.html" %}
+{% load django_tables2 %}
+
+{% block content %}
+
+<h2>Workers</h2>
+
+{% render_table worker_table %}
+
+<h2>Transitions</h2>
+{% render_table worker_log_table %}
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/tables.min.js"></script>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "lava_scheduler_app/_device_base.html" %}
+
+{% load django_tables2 %}
+
+{% block content_columns %}
+<hr/>
+<h3>Recent health jobs on {{ device.hostname }}</h3>
+{% render_table health_job_table %}
+{% endblock %}

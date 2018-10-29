@@ -1,0 +1,63 @@
+device_type: beaglebone-black
+
+# NFS fails on panda and arndale.
+
+job_name: standard Debian ARMMP ramdisk test on bbb
+timeouts:
+  job:
+    minutes: 10
+  action:
+    minutes: 5
+  connection:
+    minutes: 2
+priority: medium
+visibility: public
+
+metadata:
+  source: https://git.linaro.org/lava/lava-server.git
+  path: doc/v2/examples/test-jobs/standard-armmp-ramdisk-bbb.yaml
+  build-readme: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/armhf/3/debian-stretch-armmp-armhf-readme.html
+  build-console: https://ci.linaro.org/view/lava-ci/job/lava-debian-stretch-armmp-armhf/3/console
+  build-script: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/armhf/3/armmp-nfs.sh
+
+# ACTION_BLOCK
+actions:
+- deploy:
+    timeout:
+      minutes: 4
+    to: tftp
+    kernel:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/armhf/3/vmlinuz-4.9.0-4-armmp
+      type: zimage
+    ramdisk:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/armhf/3/initrd.img-4.9.0-4-armmp
+      compression: gz
+      # the bootloader needs a u-boot header on the modified ramdisk
+      add-header: u-boot
+    modules:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/armhf/3/modules.tar.gz
+      compression: gz
+    # despite this being a Debian initramfs, it is not a complete Debian rootfs, so use oe compatibility
+    dtb:
+      url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/stretch/armhf/3/dtbs/am335x-boneblack.dtb
+
+# BOOT_BLOCK
+- boot:
+    method: u-boot
+    commands: ramdisk
+    prompts:
+    # escape the brackets to ensure that the prompt does not match
+    # kernel debug lines which may mention initramfs
+    - '\(initramfs\)'
+    timeout:
+      minutes: 2
+
+# TEST_BLOCK
+- test:
+    timeout:
+      minutes: 5
+    definitions:
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: smoke-tests

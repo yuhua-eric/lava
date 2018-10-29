@@ -1,0 +1,101 @@
+# unit test support comment
+job_name: kvm-multinode
+
+timeouts:
+  job:
+    minutes: 5
+  action:
+    minutes: 1
+
+visibility: public
+
+protocols:
+  lava-multinode:
+    roles:
+      client:
+        device_type: qemu
+        context:
+          arch: amd64
+        count: 1
+        tags:
+        - usb-flash
+        - usb-eth
+      server:
+        device_type: qemu
+        context:
+          arch: amd64
+        count: 1
+        tags:
+        - testtag
+    timeout:
+      seconds: 60
+
+priority: medium
+
+metadata:
+  source: lava_scheduler_app unit tests
+
+actions:
+
+    - deploy:
+        timeout:
+          minutes: 2
+        to: tmpfs
+        images:
+          rootfs:
+            url: http://images.validation.linaro.org/kvm-debian-wheezy.img.gz
+            image_args: -drive format=raw,file={rootfs}
+        compression: gz
+        os: debian
+        root_partition: 1
+        role:
+        - server
+
+    - deploy:
+        timeout:
+          minutes: 2
+        to: tmpfs
+        images:
+          rootfs:
+            url: http://images.validation.linaro.org/kvm-debian-wheezy.img.gz
+            image_args: -drive format=raw,file={rootfs}
+        compression: gz
+        os: debian
+        root_partition: 1
+        role:
+        - client
+
+    - boot:
+        method: qemu
+        media: tmpfs
+        failure_retry: 2
+        role:
+        - server
+        - client
+        prompts: "root@debian:"
+
+    - test:
+        failure_retry: 3
+        role: server
+        name: kvm-basic-multinode
+        definitions:
+            - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+              from: git
+              path: lava-test-shell/multi-node/multinode01.yaml
+              name: multinode-basic
+        role:
+        - server
+        - client
+
+notify:
+  criteria:
+    status: complete
+  recipients:
+    - to:
+        user: admin
+        method: email
+  compare:
+    query:
+      entity: testjob
+      conditions:
+        submitter: admin

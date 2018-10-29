@@ -1,0 +1,4 @@
+# DO NOT EDIT
+# content is managed via ./share/requires.py
+# Installing LAVA directly from git is NOT supported.
+

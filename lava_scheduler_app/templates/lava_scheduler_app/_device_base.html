@@ -1,0 +1,170 @@
+{% extends "layouts/content.html" %}
+{% load django_tables2 %}
+
+{% block content %}
+
+{% if template_mismatch and device.health != device.HEALTH_RETIRED %}
+<div class="alert alert-danger alert-dismissible">
+  <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+  <strong>Configuration Error: missing or invalid template.</strong>
+  <p>Jobs requesting this device type ({{ device.device_type }}) will not be able to start until
+     a template is available on the master.</p>
+</div>
+{% endif %}
+
+{% if not device.worker_host and device.health != device.HEALTH_RETIRED %}
+<div class="alert alert-danger alert-dismissible">
+  <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+  <strong>No worker is associated with this device</strong>: no jobs can be scheduled, started or canceled.
+</div>
+{% endif %}
+
+{% if device.device_type.owners_only %}
+<div class="alert alert-warning alert-dismissable">
+  <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+  <strong><i>{{ device.device_type.name }}</i> is a hidden device type:</strong> Only owners of one or more devices of that type can see this page.
+</div>
+{% endif %}
+
+{% if user.is_staff and not device.get_health_check and not device.device_type.disable_health_check and device.health != device.HEALTH_RETIRED %}
+  <div class="alert alert-warning alert-dismissable">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <strong>The device has no
+      <a href="{{ STATIC_URL }}docs/v2/glossary.html#term-health-check">health check job</a></strong>
+    Consider adding a <a href="{{ STATIC_URL }}docs/v2/healthchecks.html#health-checks">health check definition</a>.
+  </div>
+{% endif %}
+
+{% block device_heading %}{% endblock %}
+
+<div class="row">
+  <div class="col-md-4">
+    <dl class="dl-horizontal">
+      <dt>Hostname</dt>
+      <dd>{{ device.hostname }}
+          {% if user.is_superuser %}<a
+          href="{% url 'admin:lava_scheduler_app_device_change' device.hostname %}" title="admin this device"><span
+          class="glyphicon glyphicon-wrench"></span></a>
+          {% endif %}
+          <a href="{% url 'lava.scheduler.device_report' device.pk %}"><span class="glyphicon glyphicon-stats"></span></a>
+      </dd>
+      <dt>Device-type</dt>
+      <dd><a href="{{ device.device_type.get_absolute_url }}">{{ device.device_type.name }}</a> <a href="{% url 'lava.scheduler.device_type_report' device.device_type.pk %}"><span class="glyphicon glyphicon-stats"></span></a></dd>
+      <dt><abbr title="If specified, submissions are restricted to this user or group">Owner</abbr></dt>
+      <dd>
+      {% if device.user %}
+      <a href="mailto:{{ device.user.email }}">{{ device.user.get_full_name|default:user.username }}</a>
+      {% elif device.group %}
+      Group <em>{{ device.group }}</em>
+      {% else %}
+      ...
+      {% endif %}
+      </dd>
+      <dt>Restriction</dt>
+      <dd><span class="label label-{{ device.is_public|yesno:"success,warning" }}">{{ device.is_public|yesno:"Public,Private" }}</span></dd>
+      <dt>Tags</dt>
+      {% if device.tags.all %}
+      <dd>
+      {% for tag in device.tags.all %}
+        {% if tag.description %}
+        <abbr title="{{ tag.description }}">{{ tag.name }}</abbr>{% if not forloop.last %},{% endif %}
+        {% else %}
+        {{ tag.name }}{% if not forloop.last %},{% endif %}
+        {% endif %}
+      {% endfor %}
+      </dd>
+      {% else %}
+      <dd>...</dd>
+      {% endif %}
+    </dl>
+  </div>
+  <div class="col-md-4">
+    <dl class="dl-horizontal">
+      <dt>State</dt>
+      <dd>{{ device.get_simple_state_display }}</dd>
+      <dt>Health</dt>
+      <dd>
+        {% if device.health == device.HEALTH_GOOD %}
+        <span class="label label-success">
+        {% elif device.health == device.HEALTH_UNKNOWN or device.health == device.HEALTH_LOOPING %}
+        <span class="label label-info">
+        {% elif device.health == device.HEALTH_MAINTENANCE %}
+        <span class="label label-warning">
+        {% else %}
+        <span class="label label-danger">
+        {% endif %}
+          {{ device.get_health_display }}
+        </span>
+        {% if can_admin %}
+        &nbsp;<a href="#healthModal" data-toggle="modal" data-target="#healthModal"><span class="glyphicon glyphicon-pencil"></span></a>
+        <div class="modal fade" id="healthModal" tabindex="-1" role="dialog" aria-labelledby="healthModalLabel">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="healthModalLabel">Device health</h4>
+              </div>
+              <div class="modal-body">
+                <form method="post" action="{% url 'lava.scheduler.device.health' device.pk %}">
+                  {% csrf_token %}
+                  <div class="form-group">
+                    <label for="health" class="control-label">Health:</label>
+                    <select name="health" class="form-control" id="health">
+                      {% if device.health != device.HEALTH_UNKNOWN %}<option>Unknown</option>{% endif %}
+                      {% if device.health != device.HEALTH_MAINTENANCE %}<option>Maintenance</option>{% endif %}
+                      {% if device.health != device.HEALTH_GOOD %}<option>Good</option>{% endif %}
+                      {% if device.health != device.HEALTH_LOOPING %}<option>Looping</option>{% endif %}
+                      {% if device.health != device.HEALTH_RETIRED %}<option>Retired</option>{% endif %}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="reason" class="control-label">Reason:</label>
+                    <textarea name="reason" class="form-control" id="reason"></textarea>
+                  </div>
+                  <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Set health</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </dd>
+      <dt>Worker</dt>
+      {% if device.worker_host %}
+      <dd><a href="{{ device.worker_host.get_absolute_url }}">{{ device.worker_host.hostname }}</a></dd>
+      {% else %}
+      <dd><i>...</i></dd>
+      {% endif %}
+      <dt>Device dictionary</dt>
+      <dd><a href="{% url 'lava.scheduler.device.dictionary' device.pk %}"><span class="glyphicon glyphicon-eye-open"></span></a></dd>
+    </dl>
+  </div>
+  <div class="col-md-4">
+    <dl class="dl-horizontal">
+      <dt><abbr title="This is the user or group with physical access to the device">Physical access</abbr></dt>
+      <dd>
+      {% if device.physical_owner %}
+      <a href="mailto:{{ device.physical_owner.email }}">{{ device.physical_owner.get_full_name|default:device.physical_owner.username }}</a>
+      {% elif device.physical_group %}
+      Group <em>{{ device.physical_group }}</em>
+      {% else %}
+      ...
+      {% endif %}
+      </dd>
+      <dt>Description</dt>
+      <dd>{{ device.get_description|default:"..."|truncatewords_html:200|wordwrap:80|linebreaksbr }}</dd>
+      <dt>Version</dt>
+      <dd>{{ device.device_version|default:"..." }}</dd>
+    </dl>
+  </div>
+</div>
+
+{% block content_columns %}
+{% endblock %}
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/tables.min.js"></script>
+{% endblock %}

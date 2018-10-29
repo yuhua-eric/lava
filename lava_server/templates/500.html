@@ -1,0 +1,19 @@
+{% extends "layouts/content.html" %}
+
+{% block breadcrumb_container %}{% endblock %}
+
+
+{% block title %} | HTTP 500 {% endblock %}
+
+
+{% block content %}
+<h1>500 Internal Server Error</h1>
+<h2>{{ exception_value }}</h2>
+<h3>{{ exception_type }}</h3>
+<p>
+  Oops, something has gone wrong!
+</p>
+{% if request.sentry.id %}
+    <p>If you need assistance, you may reference this error as <strong>{{ request.sentry.id }}</strong>.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,94 @@
+Jinja2 support in the new dispatcher
+====================================
+
+The new dispatcher removes the need for device configuration on the
+dispatcher itself, all device configuration occurs through entries in
+the database on the master scheduler and templates which assert the
+defaults and overrides.
+
+In time, these templates will move into a separate binary package so
+that templates can be updated more easily. It is also possible that
+override directories can be supported.
+
+The files in the 'devices' directory are examples which will be used
+in development and to provide a way to add devices for the new
+dispatcher.
+
+Developer builds
+================
+
+debian-dev-build.sh is a simple wrapper to build ad-hoc packages for
+developers to test their local changes. Packages built from the release
+branch would use the tag name alone - note that normally release branch
+builds will be done by Debian maintainers from official tarballs released
+by Linaro. Packages built from personal branches or the master branch
+will use the most recent tag name and have a suffix specifying the short
+git hash of the most recent commit on that branch. (This may be the same
+as the hash of the commit merged into the release branch to create the
+tag.)
+
+Developer builds need various Debian/Ubuntu package tools installed:
+
+$ sudo apt-get install dpkg-dev
+$ sudo apt-get --no-install-recommends install devscripts
+
+The lava-server build-dependencies also need to be installed - these
+change from time to time but debian-dev-build.sh will check
+dpkg-checkbuilddeps and halt and detail any build-dependencies not
+already installed.
+
+A log of the Debian package build will be placed alongside the
+packages.
+
+The Debian packaging for lava-server and lava-dispatcher are
+available at http://github.com/Linaro/
+
+Building KVM images for LAVA
+============================
+
+ git clone git://git.linaro.org/lava/lava-vmdebootstrap.git
+
+lava-vmdebootstrap is just a small wrapper around
+[vmdebootstrap](https://gitorious.org/vmdebootstrap) which does all the hard
+work. What lava-vmdebootstrap does is download the Linaro image overlays
+and pass some options that we will always need so that you don't need to.
+
+Example invocation::
+
+ $ sudo ./lava-vmdebootstrap --image=myimage.img
+
+To run the test image, make sure it is writeable:
+
+ $ sudo chmod a+w ./myimage.img
+
+Execute using qemu, e.g. on amd64 using qemu-system-x86_64:
+
+ $ qemu-system-x86_64 ./myimage.img
+
+See vmdebootstrap(1)
+
+Once the overlay packages have been downloaded, you can call vmdebootstrap
+directly to create other types of images without needing to modify
+lava-vmdebootstrap. e.g. this is a call to vmdebootstrap to create a
+KVM image based on Ubuntu:
+
+ sudo vmdebootstrap \
+  --custom-package='linaro-overlay_1112.2_all.deb' \
+  --custom-package='linaro-overlay-minimal_1112.2_all.deb' \
+  --enable-dhcp --no-kernel --package=linux-image \
+  --serial-console --serial-console-command='/bin/auto-serial-console' \
+  --root-password='root' --hostname='ubuntu' --user=linaro/linaro --sudo \
+  --verbose --image=myimage.img
+
+This command extends lava-vmdebootstrap to make a 4G image based on
+Debian testing using the UK Debian mirror:
+
+ sudo vmdebootstrap \
+  --custom-package='linaro-overlay_1112.2_all.deb' \
+  --custom-package='linaro-overlay-minimal_1112.2_all.deb' \
+  --enable-dhcp \
+  --serial-console --serial-console-command='/bin/auto-serial-console' \
+  --root-password='root' \
+  --distribution testing --size 4g \
+  --mirror http://ftp.uk.debian.org/debian \
+  --verbose --image=myimage.img

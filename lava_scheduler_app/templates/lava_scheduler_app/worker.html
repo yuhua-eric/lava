@@ -1,0 +1,127 @@
+{% extends "layouts/content.html" %}
+{% load django_tables2 %}
+
+{% block styles %}
+  <style>
+    details, summary { display: block; padding: 0.2em; }
+    summary { cursor: pointer; }
+    summary:hover, summary:focus { background: #ddd; }
+    .no-details details > * { display: none; }
+    .no-details details.open > * { display: block; }
+    .no-details details summary:before { width: 20px; content: '► '; }
+    .no-details details.open summary:before { content: '▼ '; }
+    .no-details details summary { display: block; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <dl class="dl-horizontal">
+      <dt>Hostname</dt>
+      <dd>{{ worker.hostname }}
+        {% if user.is_superuser %}<a href="{% url 'admin:lava_scheduler_app_worker_change' worker %}" title="admin this worker"><span class="glyphicon glyphicon-wrench"></span></a>{% endif %}
+      </dd>
+      <dt>Description</dt>
+      {% if can_admin %}
+      <form method="POST" action="{% url 'lava.scheduler.edit_worker_desc' %}">
+        <dd>
+          {% csrf_token %}
+          <div class="edit_desc" id="{{ worker.pk }}">{{ worker.get_description|default:"<i>...</i>" }}</div>
+        </dd>
+      </form>
+      {% else %}
+      <dd>{{ worker.get_description|default:"<i>...</i>" }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+  <div class="col-md-4">
+    <dl class="dl-horizontal">
+      <dt>State</dt>
+        {% if worker.state == worker.STATE_ONLINE %}
+      <dd class="text-success">{{ worker.get_state_display }}</dd>
+        {% else %}
+      <dd class="text-danger">{% if worker.health == worker.HEALTH_ACTIVE %}<div class="glyphicon glyphicon-fire"></div>&nbsp;{% endif %}{{ worker.get_state_display }}</dd>
+        {% endif %}
+      <dt>Health</dt>
+      <dd>
+        {% if worker.health == worker.HEALTH_ACTIVE %}
+      <span class="label label-success">
+        {% elif worker.health == worker.HEALTH_MAINTENANCE %}
+      <span class="label label-warning">
+        {% else %}
+      <span class="label label-danger">
+        {% endif %}
+        {{ worker.get_health_display }}
+      </span>
+        {% if can_admin %}
+        &nbsp;<a href="#healthModal" data-toggle="modal" data-target="#healthModal"><span class="glyphicon glyphicon-pencil"></span></a>
+        <div class="modal fade" id="healthModal" tabindex="-1" role="dialog" aria-labelledby="healthModalLabel">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="healthModalLabel">Worker health</h4>
+              </div>
+              <div class="modal-body">
+                <form method="post" action="{% url 'lava.scheduler.worker.health' worker.pk %}">
+                  {% csrf_token %}
+                  <div class="form-group">
+                    <label for="health" class="control-label">Health:</label>
+                    <select name="health" class="form-control" id="health">
+                      {% if worker.health != worker.HEALTH_ACTIVE %}<option>Active</option>{% endif %}
+                      {% if worker.health != worker.HEALTH_MAINTENANCE %}<option>Maintenance</option>{% endif %}
+                      {% if worker.health != worker.HEALTH_RETIRED %}<option>Retired</option>{% endif %}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="reason" class="control-label">Reason:</label>
+                    <textarea name="reason" class="form-control" id="reason"></textarea>
+                  </div>
+                  <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Set health</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </dd>
+    </dl>
+  </div>
+  <div class="col-md-4">
+    <dl class="dl-horizontal">
+      <dt>Devices</dt>
+      <dd>{{ worker.device_set.all.count }}</dd>
+      <dt>Retired devices</dt>
+      <dd>{{ worker.retired_devices_count }}</dd>
+    </dl>
+  </div>
+</div>
+
+<hr/>
+<h3>Devices Attached</h3>
+{% render_table worker_device_table %}
+
+<h3>Transitions</h3>
+{% render_table worker_log_table %}
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/jquery.details.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/jquery.jeditable.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/tables.min.js"></script>
+<script>
+$(document).ready(
+  function() {
+    $('.edit_desc').editable('{% url 'lava.scheduler.edit_worker_desc' %}',
+    {
+        indicator  : 'Saving ...',
+        tooltip    : 'Click to edit ...',
+        submit     : 'OK',
+        submitdata : {"csrfmiddlewaretoken": $("[name='csrfmiddlewaretoken']").val()}
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+include .testr.conf
+include .gitreview
+include COPYING.AGPL-3
+include doc/v2/*
+include doc/v2/_static/*
+include etc/*
+include etc/env.yaml
+include etc/instance.conf.template
+include etc/lava-logs
+include etc/lava-logs.service
+include etc/lava-master
+include etc/lava-master.service
+include etc/lava-publisher.service
+include etc/lava-server.conf
+include etc/lava-server-gunicorn
+include etc/lava-server-gunicorn.service
+include etc/logrotate.d/*
+include etc/settings.conf
+include lava/dispatcher/lava-run
+include lava/dispatcher/lava-slave
+include lava/lxc-mocker/*
+include lava_dispatcher/dynamic_vm_keys/*
+include lava_dispatcher/lava_test_shell/*
+include lava_dispatcher/lava_test_shell/multi_node/*
+include lava_dispatcher/lava_test_shell/vland/*
+include lava_dispatcher/lava_test_shell/distro/android/*
+include lava_dispatcher/lava_test_shell/distro/archlinux/*
+include lava_dispatcher/lava_test_shell/distro/centos/*
+include lava_dispatcher/lava_test_shell/distro/debian/*
+include lava_dispatcher/lava_test_shell/distro/fedora/*
+include lava_dispatcher/lava_test_shell/distro/oe/*
+include lava_dispatcher/lava_test_shell/distro/slackware/*
+include lava_dispatcher/lava_test_shell/distro/ubuntu/*
+include lava_server/templates/robots.txt
+include man/*
+include requirements.txt
+include README
+include share/*
+include share/apache2/*
+include share/zmq/*
+include version.py
+recursive-include doc/images *.gif *.png *.jpg *.jpeg *.bmp *.svg *.odg
+recursive-include doc/v2/images *.gif *.png *.jpg *.jpeg *.bmp *.svg *.odg
+recursive-include doc/v2/examples *.yaml *.txt *.py *.jinja2
+recursive-include doc/v2/_templates *.html
+recursive-include etc/dispatcher-config README
+recursive-include share/requirements *.yaml
+recursive-include lava_dispatcher/devices *.yaml
+recursive-include lava_dispatcher/test *.yaml *.txt
+recursive-include lava_results_app/templates *.html
+recursive-include lava_results_app/tests *.yaml
+recursive-include lava_results_app/static *.png *.js *.css *.gif
+recursive-include lava_scheduler_app/templates *.html *.txt
+recursive-include lava_scheduler_app/tests *.yaml
+recursive-include lava_scheduler_app/tests/device-types *.jinja2
+recursive-include lava_scheduler_app/tests/devices *.jinja2
+recursive-include lava_scheduler_app/static *.js *.css *.gif *.png
+recursive-include lava_server *.gif *.png *.js *.css *.svg *.ico *.woff *.woff2
+recursive-include lava_server/templates *.html

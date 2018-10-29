@@ -1,0 +1,7 @@
+{% extends "layouts/content.html" %}
+
+{% block extrahead %}
+{{ block.super }}
+{% include "_tablesort.html" %}
+<script type="text/javascript" src="{{ STATIC_URL }}lava_scheduler_app/js/tables.min.js"></script>
+{% endblock %}

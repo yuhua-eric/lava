@@ -1,0 +1,75 @@
+device_type: qemu
+
+job_name: QEMU NFS using Jessie
+timeouts:
+  job:
+    minutes: 30
+  action:
+    minutes: 1
+priority: medium
+visibility: public
+
+metadata:
+  docs-source: actions-boot-qemu-nfs
+  docs-filename: doc/v2/examples/test-jobs/qemu-nfs.yaml
+  build-readme: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/jessie/armhf/4/debian-armmp-armhf-readme.html
+  build-console: https://ci.linaro.org/view/lava-ci/job/lava-debian-armmp-armhf/4/console
+  build-script: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/jessie/armhf/4/armmp-nfs.sh
+
+context:
+  arch: arm64
+  extra_options:
+  - '-smp'
+  - 1
+
+actions:
+- deploy:
+    timeout:
+      minutes: 5
+    to: nfs
+    images:
+      nfsrootfs:
+        image_arg: 'nfsroot={NFS_SERVER_IP}:{nfsrootfs},tcp,hard,intr rw'
+        url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/jessie/arm64/4/jessie-arm64-nfs.tar.gz
+        sha256sum: 21af3cae4a665972dd78b0d0748a8ada3a3001c25e605929054960d2bfee015c
+        compression: gz
+      kernel:
+        url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/sid/arm64/8/vmlinuz-4.9.0-2-arm64
+        sha256sum: 4dc0363bafc93f48e5b60ada3502394f61d9f1cfbf9059ceed30533aca16d706
+        image_arg: -kernel {kernel}
+      initrd:
+        url: http://images.validation.linaro.org/snapshots.linaro.org/components/lava/standard/debian/sid/arm64/8/initrd.img-4.9.0-2-arm64
+        sha256sum: 4dfdcf9053bea72d7bc1c37f77f43c4447422c68f4ea8b99c6690de2e7f6e3e4
+        image_arg: -initrd {initrd}
+
+# BOOT_BLOCK
+- boot:
+    timeout:
+      minutes: 4
+    method: qemu-nfs
+    media: nfs
+    connection: serial
+    auto_login:
+      login_prompt: 'login:'
+      username: root
+    prompts:
+      - 'root@(.*):'
+
+- test:
+    timeout:
+      minutes: 25
+    definitions:
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/smoke-tests-basic.yaml
+      name: smoke-tests
+    - from: git
+      repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      path: lava-test-shell/params/nfs.yaml
+      parameters:
+        INTERFACE: enp0s1
+      name: nfs-dns
+    - repository: http://git.linaro.org/lava-team/lava-functional-tests.git
+      from: git
+      path: lava-test-shell/single-node/singlenode03.yaml
+      name: singlenode-advanced
